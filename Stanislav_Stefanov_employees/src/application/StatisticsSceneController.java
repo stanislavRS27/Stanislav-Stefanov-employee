@@ -60,42 +60,35 @@ public class StatisticsSceneController implements Initializable{
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1) {
 		
+		int dataSize = MainSceneController.empID.size();
+		
 		checkedEmployees.clear();
 		checkedEmployeesRevesedOrder.clear();
 		
-		//check how many unique employees are present
+		//check how many unique employees and projects are present
 		//{
 		HashMap<Integer, Boolean> employeePresent = new HashMap<>();
 		int employeeCount = 0;
 		
-		for(int i = 0; i < MainSceneController.empID.size(); ++i) {
-			
-			if(employeePresent.containsKey(MainSceneController.empID.get(i))) {
-				continue;
-			}
-			
-			employeePresent.put(MainSceneController.empID.get(i), true);
-			employeeCount++;
-		}
-		//}
-		
-		//check how many unique projects are present
-		//{
 		HashMap<Integer, Boolean> projectPresent = new HashMap<>();
 		int projectCount = 0;
 		
-		for(int i = 0; i < MainSceneController.projID.size(); ++i) {
-			
-			if(projectPresent.containsKey(MainSceneController.projID.get(i))) {
-				continue;
+		for(int i = 0; i < dataSize; ++i) {		
+			if(!employeePresent.containsKey(MainSceneController.empID.get(i))) {
+				employeePresent.put(MainSceneController.empID.get(i), true);
+				employeeCount++;
 			}
 			
-			projectPresent.put(MainSceneController.projID.get(i), true);
-			projectCount++;
+			if(!projectPresent.containsKey(MainSceneController.projID.get(i))) {
+				projectPresent.put(MainSceneController.projID.get(i), true);
+				projectCount++;
+			}
 		}
 		//}
 		
 		//initialize the matrix with invalid values
+		//the matrix is of the form
+		//Columns: EmployeeID 1; Rows: EmployeeID 2; Depth of the array in the corresponding column & row: Common projectID
 		//{
 		int[][][] empProj = new int[employeeCount][employeeCount][projectCount];
 		
@@ -109,7 +102,8 @@ public class StatisticsSceneController implements Initializable{
 		//}
 		
 		//populate the HashMap
-		for(int i = 0, j = 0; i < MainSceneController.empID.size(); ++i) {
+		//this HashMap helps to find indices of the Employees based on their ID(checkedEmployees) and vice versa(checkedEmployeesRevesedOrder)
+		for(int i = 0, j = 0; i < dataSize; ++i) {
 			if(!checkedEmployees.containsKey(MainSceneController.empID.get(i))) {
 				checkedEmployees.put(MainSceneController.empID.get(i), j);
 				checkedEmployeesRevesedOrder.put(j++, MainSceneController.empID.get(i));
@@ -117,27 +111,34 @@ public class StatisticsSceneController implements Initializable{
 		}
 		
 		//populate the relation matrix
-		for(int i = 0; i < MainSceneController.empID.size(); ++i) {
-			for(int j = 0, projIndex = 0; j < MainSceneController.empID.size(); ++j) {
+		for(int i = 0; i < dataSize; ++i) {
+			for(int j = 0, projIndex = 0; j < dataSize; ++j) {
 				
 				int employeeIndex = checkedEmployees.get(MainSceneController.empID.get(i));
 				
 				if((MainSceneController.projID.get(i).equals(MainSceneController.projID.get(j))) && !(MainSceneController.empID.get(i).equals(MainSceneController.empID.get(j)))) {
+					
+					//the program enters in the while loop if an employee, that already has a project worked on with another employee,
+					//has another, different project and an empty index is needed to store the new project 
 					while(empProj[employeeIndex][checkedEmployees.get(MainSceneController.empID.get(j))][projIndex] != -1) {
 						projIndex++;
 					}
+					
+					//set the value to the projectID
 					empProj[employeeIndex][checkedEmployees.get(MainSceneController.empID.get(j))][projIndex] = MainSceneController.projID.get(i);
 				}
 
 			}
 		}
 		
+		//needed only for the PieChart
 		overallTimeSpentTogether = new int[employeeCount][employeeCount];
 		
-		//here the date is converted to millis, then calculated to achieve the time worked together back in days
+		//here the Dates are converted to millis, then calculated to achieve the time worked together back in days
 		for(int i = 0; i < empProj.length; ++i) {
 			for(int j = i; j < empProj[i].length; ++j) {
 				for(int k = 0; k < empProj[i][j].length; ++k) {
+					//if they have a project they have worked together upon
 					if(empProj[i][j][k] != -1) {
 						
 						boolean flag1 = false;
@@ -148,7 +149,8 @@ public class StatisticsSceneController implements Initializable{
 						String emp2DateFrom = "";
 						String emp2DateTo = "";
 						
-						for(int l = 0; l < MainSceneController.empID.size(); ++l) {
+						//retrieve the needed dates from the original data ArrayLists
+						for(int l = 0; l < dataSize; ++l) {
 							
 							//find the corresponding dates for each employee that has worked in team with somebody
 							if(MainSceneController.empID.get(l).equals(checkedEmployeesRevesedOrder.get(i)) && MainSceneController.projID.get(l).equals(empProj[i][j][k])){
@@ -178,21 +180,23 @@ public class StatisticsSceneController implements Initializable{
 							//when both are found and their corresponding dates retrieved
 							if(flag1 && flag2) {
 								try {
-									SimpleDateFormat sdfEmp1From = new SimpleDateFormat("yyyy-MM-dd");
-								    Date dateEmp1From = sdfEmp1From.parse(emp1DateFrom);
-								    long millisEmp1From = dateEmp1From.getTime();
+									//the only acceptable date format
+									SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+									
+									//convert the date to millis
+									//{
+								    Date date = sdf.parse(emp1DateFrom);
+								    long millisEmp1From = date.getTime();
 								    
-									SimpleDateFormat sdfEmp1To = new SimpleDateFormat("yyyy-MM-dd");
-								    Date dateEmp1To = sdfEmp1To.parse(emp1DateTo);
-								    long millisEmp1To = dateEmp1To.getTime();
+								    date = sdf.parse(emp1DateTo);
+								    long millisEmp1To = date.getTime();
 								    
-								    SimpleDateFormat sdfEmp2From = new SimpleDateFormat("yyyy-MM-dd");
-								    Date dateEmp2From = sdfEmp2From.parse(emp2DateFrom);
-								    long millisEmp2From = dateEmp2From.getTime();
+								    date = sdf.parse(emp2DateFrom);
+								    long millisEmp2From = date.getTime();
 								    
-								    SimpleDateFormat sdfEmp2To = new SimpleDateFormat("yyyy-MM-dd");
-								    Date dateEmp2To = sdfEmp2To.parse(emp2DateTo);
-								    long millisEmp2To = dateEmp2To.getTime();
+								    date = sdf.parse(emp2DateTo);
+								    long millisEmp2To = date.getTime();
+								    //}
 								    
 								    long millisFrom;
 								    long millisTo;
@@ -213,13 +217,16 @@ public class StatisticsSceneController implements Initializable{
 								    	millisTo = millisEmp1To;
 								    }
 								    
+								    //converting the calculated time worked together back to days (from millis)
 								    int days = (int)((float)(millisTo - millisFrom) / 86400000);
 								    
+								    //add everything to the ListViews in the Statistics Scene
 								    listViewEmp1Id.getItems().add(checkedEmployeesRevesedOrder.get(i).toString());
 								    listViewEmp2Id.getItems().add(checkedEmployeesRevesedOrder.get(j).toString());
 								    listViewProjId.getItems().add(Integer.toString(empProj[i][j][k]));
 								    listViewTimeSpentTogether.getItems().add(Integer.toString(days));
 								    
+								    //calculates the OVERALL time worked together between 2 employees
 								    overallTimeSpentTogether[i][j] += days;
 								}
 								catch(Exception ex) {
